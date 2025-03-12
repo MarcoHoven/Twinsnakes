@@ -1,1 +1,36 @@
+body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background-color: #f0f0f0;
+}
 
+#game-container {
+    text-align: center;
+}
+
+#gameCanvas {
+    border: 1px solid #333;
+    background-color: #fff;
+}
+
+#start-button {
+    margin-top: 10px;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+#start-button:hover {
+    background-color: #ddd;
+}
+
+#win-message {
+    margin-top: 10px;
+    font-size: 24px;
+    font-weight: bold;
+    color: #333;
+}
