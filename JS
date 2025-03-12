@@ -1,1 +1,180 @@
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const gridSize = 20;
+const tileCount = canvas.width / gridSize;
 
+let snake1 = [{ x: 5, y: 5 }];
+let snake2 = [{ x: 15, y: 15 }];
+let velocity1 = { x: 0, y: 0 };
+let velocity2 = { x: 0, y: 0 };
+let food = null;
+let score1 = 0;
+let score2 = 0;
+let gameActive1 = false;
+let gameActive2 = false;
+let gameStarted = false;
+
+const scoreDisplay1 = document.getElementById('score1');
+const scoreDisplay2 = document.getElementById('score2');
+const startButton = document.getElementById('start-button');
+const winMessage = document.getElementById('win-message');
+const eatSound = document.getElementById('eatSound');
+const crashSound = document.getElementById('crashSound');
+
+document.addEventListener('keydown', changeDirection);
+startButton.addEventListener('click', startGame);
+
+function startGame() {
+    if (gameStarted) return;
+    resetGame();
+    gameStarted = true;
+    startButton.style.display = 'none';
+    winMessage.style.display = 'none';
+    gameLoop();
+}
+
+function gameLoop() {
+    if (!gameActive1 && !gameActive2 && gameStarted) {
+        declareWinner();
+        startButton.style.display = 'block';
+        gameStarted = false;
+        return;
+    }
+
+    setTimeout(() => {
+        update();
+        draw();
+        if (gameStarted) gameLoop();
+    }, 100);
+}
+
+function changeDirection(event) {
+    if (!gameStarted) return;
+    // Player 1: WASD
+    if (gameActive1) {
+        switch (event.key) {
+            case 'w': if (velocity1.y === 0) velocity1 = { x: 0, y: -1 }; break;
+            case 's': if (velocity1.y === 0) velocity1 = { x: 0, y: 1 }; break;
+            case 'a': if (velocity1.x === 0) velocity1 = { x: -1, y: 0 }; break;
+            case 'd': if (velocity1.x === 0) velocity1 = { x: 1, y: 0 }; break;
+        }
+    }
+    // Player 2: Arrow Keys
+    if (gameActive2) {
+        switch (event.key) {
+            case 'ArrowUp': if (velocity2.y === 0) velocity2 = { x: 0, y: -1 }; break;
+            case 'ArrowDown': if (velocity2.y === 0) velocity2 = { x: 0, y: 1 }; break;
+            case 'ArrowLeft': if (velocity2.x === 0) velocity2 = { x: -1, y: 0 }; break;
+            case 'ArrowRight': if (velocity2.x === 0) velocity2 = { x: 1, y: 0 }; break;
+        }
+    }
+}
+
+function update() {
+    if (gameActive1) updateSnake(snake1, velocity1, snake2);
+    if (gameActive2) updateSnake(snake2, velocity2, snake1);
+    if (!food && (gameActive1 || gameActive2)) spawnFood();
+}
+
+function updateSnake(snake, velocity, otherSnake) {
+    const head = { x: snake[0].x + velocity.x, y: snake[0].y + velocity.y };
+
+    // Wall collision
+    if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
+        endGame(snake);
+        crashSound.play();
+        return;
+    }
+
+    // Self collision
+    for (let i = 0; i < snake.length; i++) {
+        if (head.x === snake[i].x && head.y === snake[i].y) {
+            endGame(snake);
+            crashSound.play();
+            return;
+        }
+    }
+
+    // Collision with other snake
+    for (let i = 0; i < otherSnake.length; i++) {
+        if (head.x === otherSnake[i].x && head.y === otherSnake[i].y) {
+            endGame(snake);
+            crashSound.play();
+            return;
+        }
+    }
+
+    snake.unshift(head);
+
+    // Food check
+    if (head.x === food.x && head.y === food.y) {
+        if (snake === snake1) score1 += 1, scoreDisplay1.textContent = score1;
+        else score2 += 1, scoreDisplay2.textContent = score2;
+        food = null;
+        eatSound.play();
+    } else {
+        snake.pop();
+    }
+}
+
+function spawnFood() {
+    food = {
+        x: Math.floor(Math.random() * tileCount),
+        y: Math.floor(Math.random() * tileCount)
+    };
+    for (let segment of [...snake1, ...snake2]) {
+        if (food.x === segment.x && food.y === segment.y) {
+            spawnFood();
+            return;
+        }
+    }
+}
+
+function endGame(snake) {
+    if (snake === snake1) gameActive1 = false;
+    else gameActive2 = false;
+}
+
+function draw() {
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw Snake 1 (Blue)
+    ctx.fillStyle = gameActive1 ? '#0000ff' : '#666';
+    snake1.forEach(segment => {
+        ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize - 2, gridSize - 2);
+    });
+
+    // Draw Snake 2 (Green)
+    ctx.fillStyle = gameActive2 ? '#00ff00' : '#666';
+    snake2.forEach(segment => {
+        ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize - 2, gridSize - 2);
+    });
+
+    // Draw Food (Red)
+    if (food) {
+        ctx.fillStyle = '#ff0000';
+        ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize - 2, gridSize - 2);
+    }
+}
+
+function resetGame() {
+    snake1 = [{ x: 5, y: 5 }];
+    snake2 = [{ x: 15, y: 15 }];
+    velocity1 = { x: 0, y: 0 };
+    velocity2 = { x: 0, y: 0 };
+    food = null;
+    score1 = 0;
+    score2 = 0;
+    scoreDisplay1.textContent = score1;
+    scoreDisplay2.textContent = score2;
+    gameActive1 = true;
+    gameActive2 = true;
+}
+
+function declareWinner() {
+    winMessage.style.display = 'block';
+    if (score1 > score2) winMessage.textContent = 'Player 1 Wins!';
+    else if (score2 > score1) winMessage.textContent = 'Player 2 Wins!';
+    else winMessage.textContent = 'It’s a Tie!';
+}
