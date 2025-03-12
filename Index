@@ -1,1 +1,21 @@
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Two-Player Snake</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="game-container">
+        <h1>Two-Player Snake</h1>
+        <p>Player 1 (WASD): <span id="score1">0</span> | Player 2 (Arrows): <span id="score2">0</span></p>
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <button id="start-button">Start Game</button>
+        <div id="win-message" style="display: none;"></div>
+    </div>
+    <audio id="eatSound" src="https://www.soundjay.com/buttons/beep-01a.mp3"></audio>
+    <audio id="crashSound" src="https://www.soundjay.com/mechanical/metal-clank-01.mp3"></audio>
+    <script src="script.js"></script>
+</body>
+</html>
