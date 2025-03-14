@@ -21,30 +21,39 @@ const winMessage = document.getElementById('win-message');
 const eatSound = document.getElementById('eatSound');
 const crashSound = document.getElementById('crashSound');
 
+// Touch variables
+let touchStartX = null;
+let touchStartY = null;
+
 document.addEventListener('keydown', changeDirection);
 startButton.addEventListener('click', startGame);
+canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
 
 function startGame() {
     if (gameStarted) return;
     resetGame();
     gameStarted = true;
+    gameActive1 = true;
+    gameActive2 = true;
     startButton.style.display = 'none';
     winMessage.style.display = 'none';
     gameLoop();
 }
 
 function gameLoop() {
-    if (!gameActive1 && !gameActive2 && gameStarted) {
-        declareWinner();
-        startButton.style.display = 'block';
-        gameStarted = false;
-        return;
-    }
+    if (!gameStarted) return;
 
     setTimeout(() => {
         update();
         draw();
-        if (gameStarted) gameLoop();
+        if (gameActive1 || gameActive2) {
+            gameLoop();
+        } else {
+            declareWinner();
+            startButton.style.display = 'block';
+            gameStarted = false;
+        }
     }, 100);
 }
 
@@ -70,6 +79,50 @@ function changeDirection(event) {
     }
 }
 
+function handleTouchStart(event) {
+    if (!gameStarted) return;
+    event.preventDefault();
+    const touch = event.touches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+}
+
+function handleTouchMove(event) {
+    if (!gameStarted || touchStartX === null || touchStartY === null) return;
+    event.preventDefault();
+    const touch = event.touches[0];
+    const deltaX = touch.clientX - touchStartX;
+    const deltaY = touch.clientY - touchStartY;
+    const threshold = 20; // Minimum swipe distance
+
+    // Determine which player based on touch position
+    const isPlayer1 = touchStartX < canvas.width / 2;
+
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > threshold) {
+        // Horizontal swipe
+        if (isPlayer1 && gameActive1) {
+            if (deltaX > 0 && velocity1.x === 0) velocity1 = { x: 1, y: 0 }; // Right
+            else if (deltaX < 0 && velocity1.x === 0) velocity1 = { x: -1, y: 0 }; // Left
+        } else if (!isPlayer1 && gameActive2) {
+            if (deltaX > 0 && velocity2.x === 0) velocity2 = { x: 1, y: 0 }; // Right
+            else if (deltaX < 0 && velocity2.x === 0) velocity2 = { x: -1, y: 0 }; // Left
+        }
+    } else if (Math.abs(deltaY) > threshold) {
+        // Vertical swipe
+        if (isPlayer1 && gameActive1) {
+            if (deltaY > 0 && velocity1.y === 0) velocity1 = { x: 0, y: 1 }; // Down
+            else if (deltaY < 0 && velocity1.y === 0) velocity1 = { x: 0, y: -1 }; // Up
+        } else if (!isPlayer1 && gameActive2) {
+            if (deltaY > 0 && velocity2.y === 0) velocity2 = { x: 0, y: 1 }; // Down
+            else if (deltaY < 0 && velocity2.y === 0) velocity2 = { x: 0, y: -1 }; // Up
+        }
+    }
+
+    // Reset touch start after processing
+    touchStartX = null;
+    touchStartY = null;
+}
+
 function update() {
     if (gameActive1) updateSnake(snake1, velocity1, snake2);
     if (gameActive2) updateSnake(snake2, velocity2, snake1);
@@ -77,16 +130,16 @@ function update() {
 }
 
 function updateSnake(snake, velocity, otherSnake) {
+    if (velocity.x === 0 && velocity.y === 0) return;
+
     const head = { x: snake[0].x + velocity.x, y: snake[0].y + velocity.y };
 
-    // Wall collision
     if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
         endGame(snake);
         crashSound.play();
         return;
     }
 
-    // Self collision
     for (let i = 0; i < snake.length; i++) {
         if (head.x === snake[i].x && head.y === snake[i].y) {
             endGame(snake);
@@ -95,7 +148,6 @@ function updateSnake(snake, velocity, otherSnake) {
         }
     }
 
-    // Collision with other snake
     for (let i = 0; i < otherSnake.length; i++) {
         if (head.x === otherSnake[i].x && head.y === otherSnake[i].y) {
             endGame(snake);
@@ -106,8 +158,7 @@ function updateSnake(snake, velocity, otherSnake) {
 
     snake.unshift(head);
 
-    // Food check
-    if (head.x === food.x && head.y === food.y) {
+    if (food && head.x === food.x && head.y === food.y) {
         if (snake === snake1) score1 += 1, scoreDisplay1.textContent = score1;
         else score2 += 1, scoreDisplay2.textContent = score2;
         food = null;
@@ -139,19 +190,16 @@ function draw() {
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw Snake 1 (Blue)
     ctx.fillStyle = gameActive1 ? '#0000ff' : '#666';
     snake1.forEach(segment => {
         ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize - 2, gridSize - 2);
     });
 
-    // Draw Snake 2 (Green)
     ctx.fillStyle = gameActive2 ? '#00ff00' : '#666';
     snake2.forEach(segment => {
         ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize - 2, gridSize - 2);
     });
 
-    // Draw Food (Red)
     if (food) {
         ctx.fillStyle = '#ff0000';
         ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize - 2, gridSize - 2);
